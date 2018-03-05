@@ -31,29 +31,48 @@ var bot = new builder.UniversalBot(connector, function (session) {
     session.send('What can I do for you?');
     session.beginDialog('selection');
 })
-    .set('storage', inMemoryStorage);
 
-bot.dialog('selection', [
-    (session) => {
-        builder.Prompts.choice(session, "Available options", "basic|carousel|receipt");
-    },
-    (session, result) => {
-        switch (result.response.index) {
-            case 0:
-                session.beginDialog('basic');
-                break;
-            case 1:
-                session.beginDialog('carousel');
-                break;
-            case 2:
-                session.beginDialog('receipt');
-                break;
-            case 3:
-                session.beginDialog('signin');
-                break;
-        }
-    }
-]);
+bot.set('storage', inMemoryStorage);
+
+var recognizer = new builder.LuisRecognizer(config.get("MicrosoftLuisUrl"));
+
+var intents = new builder.IntentDialog({ recognizers: [recognizer] })
+.matches('receipt', 'receipt')
+.matches('carousel', 'carousel')
+.matches('basic', 'basic')
+.matches('ent_demo', (session, args) => {
+  const parsedArgs = parse_args(args)
+  const str_param = parsedArgs['str_val']
+  const int_param = parsedArgs['int_val']
+  session.send(`Your arguments sir, string: ${str_param}, int: ${int_param}`)
+})
+.onDefault((session) => {
+    session.send('Sorry I do not understand');
+});
+bot.dialog('selection', intents);
+
+// bot.dialog('selection', [
+//     (session) => {
+//         builder.Prompts.choice(session, "Available options", "basic|carousel|receipt");
+//     },
+//     (session, result) => {
+//         switch (result.response.index) {
+//             case 0:
+//                 session.beginDialog('basic');
+//                 break;
+//             case 1:
+//                 session.beginDialog('carousel');
+//                 break;
+//             case 2:
+//                 session.beginDialog('receipt');
+//                 break;
+//             case 3:
+//                 session.beginDialog('signin');
+//                 break;
+//         }
+//     }
+// ]);
+
 
 bot.dialog('basic', [
     (session) => {
@@ -140,3 +159,9 @@ bot.dialog('help', [
         session.beginDialog(args.action, args);
     }
 });
+
+function parse_args(args) {
+  var ret = {}
+  args['entities'].forEach((value) => {ret[value['type']] = value['entity']})
+  return ret
+}
